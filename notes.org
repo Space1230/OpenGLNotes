@@ -1,0 +1,122 @@
+#+title: OpenGL Notes (or the basics of 3d graphics)
+#+author: Andy Sparks
+
+The notes are on the following book: [[https://paroj.github.io/gltut/index.html][Learning Modern 3D Graphics Programming]]
+* Intro to Rasterization and Rendering
+- rendering :: the conversion of a 3d world into a 2d image
+  + rasterization :: the process of rendering used by real-time graphics hardware
+    - rasterizer :: a rendering system that uses rasterization
+** Rasterization
++ objects = empty shells
+  - shells = triangles
+    + triangles called *geometry*, *model*, or *mesh*
+
++ from triangles to 2d images
++ these phases of rasterization form the graphics pipeline
++ triangles evaluated one at a time in order
+
++ each triangle has 3 vertices
+  - vertex :: collection of arbitrary data
+    + usually contains 3d point info
+** Clip Space Transformation
+- first phase
+- decides which triangles get rendered
+  + clip space :: the volume that the triangle is transformed into
+  + clip coordinates :: the coordinates of a triangle in clip space
+    - X,Y,Z and W components
+      + W defines extent of clip space for its vertex
+      + each vertex exists in its own clip space
+  + clipping :: a process for triangles that are partially outside of the clip space
+    - break down triangles into smaller ones
+
+- clip coordinates can become normalized
+  + X, Y, and Z are divided by W to get these new coordinates
+  + normalized device coordinates :: is the clip space for every triangle
+  + range of X, Y, and Z normalized is [-1,1]
+** Window Transformation
+- second phase
+- similar to previous, now limiting triangles viewable in the window of the application
+- floating point coordinates, not bound to pixels
+- origion is bottom-left
+- bounds for Z are [0,1]
+** Scan Conversion
+- third phase
+- scan conversion :: the process of transforming triangles into pixels
+- sample :: the center of the pixel
+  + fragment :: produced when the sample is found with in the triangle
+  + fragments are the "pixels" we talked about
+
+- OpenGL implements an invariance guarantee
+  + invariance guarantee :: the guarantee that as long as shared edge vertex postions are identical, there will be no sample gaps during scan conversion
+
+- Z is still saved in each fragment
+** Fragment Processing
+- fourth phase
+- transforms fragments into one or more color values and a single depth value
+- fragments are processed per triangle
+* Colors
+- range [0,1] for each reference color
+- colorspace :: set of reference colors
+* Shader
+- shader :: program run on a render as part of the rendering operation
+- shader stages :: times in the rendering process that shaders can be used
+* OpenGL Specifics
+** As an API
+- state machine :: functions set or retrieve some state
+  + basically a large struct
+    - OpenGL context :: the giant "struct" holding the state
+
+- each object referred to by GLuint
+  + objects generated with glGen...(number-of-objects-to-create, &GLuint)
+
+- to modify objects, we must bind them to a context
+  + targets :: valid contexts to bind objects to
+    - basically global pointers
+  + glBindObject(GL_MODIFY, objectName)
+
+- glObjectParameter is used to set parameters
+  + there is an i at the end for int
+  + there is an f at the end for floats
+** The Specification
+- defines state and what functions should do
+- describes results not implementation
+- 3.1+ removes a lot of depriated code
+  + in general though, most implementations are backwards compatible
+- Architectural Review Board :: body of Khronos Group that governs OpenGL specification
+* Writing a OpenGL program
+- 5 functions need to be defined
+  + defaults :: window size and init parameters for OpenGL
+  + init :: after OPenGL initalized and before rendering
+  + reshape :: window is resized
+  + keyboard :: user presses key
+  + display :: called when it detects that the screen needs to be rendered to
+* Hello +World+ Triangle
+** The Display Function
+#+begin_src cpp
+
+//Called to update the display.
+//You should call glutSwapBuffers after all of your rendering to display what you rendered.
+//If you need continuous updates of the screen, call glutPostRedisplay() at the end of the function.
+void display()
+{
+	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+	glClear(GL_COLOR_BUFFER_BIT);
+
+	glUseProgram(theProgram);
+
+	glBindBuffer(GL_ARRAY_BUFFER, positionBufferObject);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0);
+
+	glDrawArrays(GL_TRIANGLES, 0, 3);
+
+	glDisableVertexAttribArray(0);
+	glUseProgram(0);
+
+	glutSwapBuffers();
+}
+
+#+end_src
+- ~glClearColor~ is set to black
+  + as suggested, it is the color used for clearing the screen
+  + used to clear ~GL_COLOR_BUFFER_BIT~
