@@ -99,24 +99,97 @@ The notes are on the following book: [[https://paroj.github.io/gltut/index.html]
 //If you need continuous updates of the screen, call glutPostRedisplay() at the end of the function.
 void display()
 {
-	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-	glClear(GL_COLOR_BUFFER_BIT);
+	glClearColor(0.0f, 0.0f, 0.0f, 0.0f); // black
+	glClear(GL_COLOR_BUFFER_BIT); // the black color fills the BUFFER_BIT
 
 	glUseProgram(theProgram);
 
+    // set up the triangles to be rendered
 	glBindBuffer(GL_ARRAY_BUFFER, positionBufferObject);
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0);
 
+    // gen vertices that will form triangles
 	glDrawArrays(GL_TRIANGLES, 0, 3);
 
+    // clean up
 	glDisableVertexAttribArray(0);
 	glUseProgram(0);
 
+    // program is double buffered; shows rendered image in other buffer
 	glutSwapBuffers();
 }
 
 #+end_src
-- ~glClearColor~ is set to black
-  + as suggested, it is the color used for clearing the screen
-  + used to clear ~GL_COLOR_BUFFER_BIT~
+- display is where most important work happens
+** Vertex Transfer (to OpenGL Buffer Object)
+#+begin_src cpp
+// an example of vertex data
+const float vertexPositions[] = {
+    0.75f, 0.75f, 0.0f, 1.0f,
+    0.75f, -0.75f, 0.0f, 1.0f,
+    -0.75f, -0.75f, 0.0f, 1.0f,
+};
+#+end_src
+- buffer object :: OpenGL memory where we pass vertex positions
+*** Initializing the Buffer and Filling in with Data
+  #+begin_src cpp
+  // creating a buffer object
+  void InitializeVertexBuffer()
+  {
+      glGenBuffers(1, &positionBufferObject); // positionBufferObject holds handle, but not allocated
+
+      glBindBuffer(GL_ARRAY_BUFFER, positionBufferObject);
+      // allocates buffer (2nd arg) and copies vertex data (3rd arg) in
+      glBufferData(GL_ARRAY_BUFFER, sizeof(vertexPositions), vertexPositions, GL_STATIC_DRAW);
+
+      glBindBuffer(GL_ARRAY_BUFFER, 0); // unbinds buffer
+  }
+  #+end_src
+*** Telling OpenGL what data is in the buffer
+#+begin_src cpp
+glBindBuffer(GL_ARRAY_BUFFER, positionBufferObject);
+glEnableVertexAttribArray(0);
+glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0);
+#+end_src
+- ~glVertexAttribPointer~
+  + GL_FLOAT - 32 bit floating value
+  + 4 - the how many of these values (floating point nums) represent a single piece of data
+  + 0 (5th parm) - spacing between each set of values
+  + 0 (6th parm) - byte offset from the front of the buffer object
+  + implicitly ~GL_ARRAY_BUFFER~
+*** Drawing the Triangle
+#+begin_src cpp
+glDrawArrays(GL_TRIANGLES, 0, 3)
+#+end_src
+- 1st par - take every 3 vertices as an independent triangle
+- 2nd par - start index
+- 3rd par - number of indices to read from vertex data
+** Vertex Processing and Shaders
+:PROPERTIES:
+:ID:       1a70b23a-5038-4c1b-b851-d6bc031c115e
+:END:
+- each invocation of a vertex shader operates on a single vertex
+  + output a clip-space position
+
+#+begin_src glsl
+#version 330
+
+layout(location = 0) in vec4 position;
+void main()
+{
+    gl_Position = position; // we are inputting data already in clip-space position
+}
+
+out vec4 gl_Position; // gl_Position is the clip-space position of the vertex
+#+end_src
+- vertex attributes :: inputs to a vertex shader
+  + filled out by ~glEnableVertexAttribArray~ and ~glVertexAttribPointer~
+    - discused [[*Telling OpenGL what data is in the buffer][here]]
+    - in both, the first argument is an attribute index
+[[https://paroj.github.io/gltut/Basics/VertexShaderDataFlow.svg]]
+** Rasterization
+- the clip-space is divided by W to get normalized coordinates
+  + W for us is 1.0
+- then window coordinates
+  + viewpoint transform :: transform to window coordinates
